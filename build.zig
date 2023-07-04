@@ -4,20 +4,39 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const lib = b.addStaticLibrary(.{
+    const sdl_lib = b.addStaticLibrary(.{
         .name = "SDL2",
         .target = target,
         .optimize = optimize,
     });
-    const t = lib.target_info.target;
+    addSDL(b, sdl_lib, target);
+    b.installArtifact(sdl_lib);
+}
 
-    lib.addIncludePath("include");
-    lib.addCSourceFiles(&generic_src_files, &.{});
+pub fn addSDL(
+    b: *std.Build,
+    lib: *std.Build.CompileStep,
+    target: std.zig.CrossTarget,
+) void {
+    _ = target;
+    const t = lib.target_info.target;
+    const src_dir = std.fs.path.dirname(@src().file) orelse ".";
+    const include_dir = std.fs.path.join(b.allocator, &.{ src_dir, "include" }) catch @panic("join");
+
+    lib.addIncludePath(include_dir);
+
+    for (generic_src_files) |src| {
+        const path = std.fs.path.join(b.allocator, &.{ src_dir, src }) catch @panic("join");
+        lib.addCSourceFile(path, &.{});
+    }
     lib.defineCMacro("SDL_USE_BUILTIN_OPENGL_DEFINITIONS", "1");
     lib.linkLibC();
     switch (t.os.tag) {
         .windows => {
-            lib.addCSourceFiles(&windows_src_files, &.{});
+            for (windows_src_files) |src| {
+                const path = std.fs.path.join(b.allocator, &.{ src_dir, src }) catch @panic("join");
+                lib.addCSourceFile(path, &.{});
+            }
             lib.linkSystemLibrary("setupapi");
             lib.linkSystemLibrary("winmm");
             lib.linkSystemLibrary("gdi32");
@@ -27,8 +46,18 @@ pub fn build(b: *std.Build) void {
             lib.linkSystemLibrary("ole32");
         },
         .macos => {
-            lib.addCSourceFiles(&darwin_src_files, &.{});
-            lib.addCSourceFiles(&objective_c_src_files, &.{"-fobjc-arc"});
+            for (darwin_src_files) |src| {
+                const path = std.fs.path.join(b.allocator, &.{ src_dir, src }) catch @panic("join");
+                lib.addCSourceFile(path, &.{});
+            }
+            for (objective_c_src_files) |src| {
+                const path = std.fs.path.join(b.allocator, &.{ src_dir, src }) catch @panic("join");
+                lib.addCSourceFile(path, &.{"-fobjc-arc"});
+            }
+            // for (ios_src_files) |src| {
+            //     const path = std.fs.path.join(b.allocator, &.{ src_dir, src }) catch @panic("join");
+            //     lib.addCSourceFile(path, &.{"-fobjc-arc"});
+            // }
             lib.linkFramework("OpenGL");
             lib.linkFramework("Metal");
             lib.linkFramework("CoreVideo");
@@ -50,8 +79,7 @@ pub fn build(b: *std.Build) void {
             lib.installConfigHeader(config_header, .{});
         },
     }
-    lib.installHeadersDirectory("include", "SDL2");
-    b.installArtifact(lib);
+    lib.installHeadersDirectory(include_dir, "SDL2");
 }
 
 const generic_src_files = [_][]const u8{
@@ -338,7 +366,7 @@ const objective_c_src_files = [_][]const u8{
     "src/filesystem/cocoa/SDL_sysfilesystem.m",
     //"src/hidapi/testgui/mac_support_cocoa.m",
     // This appears to be for SDL3 only.
-    //"src/joystick/apple/SDL_mfijoystick.m",
+    // "src/joystick/apple/SDL_mfijoystick.m",
     "src/locale/macosx/SDL_syslocale.m",
     "src/misc/macosx/SDL_sysurl.m",
     "src/power/uikit/SDL_syspower.m",
