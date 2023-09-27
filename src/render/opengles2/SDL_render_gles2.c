@@ -236,6 +236,9 @@ GL_CheckAllErrors(const char *prefix, SDL_Renderer *renderer, const char *file, 
 #define GL_CheckError(prefix, renderer)
 #else
 #define GL_CheckError(prefix, renderer) GL_CheckAllErrors(prefix, renderer, SDL_FILE, SDL_LINE, SDL_FUNCTION)
+/* TODO: respect SDL_ASSERT_LEVEL,
+ *   don't pollute binaries with __FILE__/__LINE__ */
+#define GL_CheckError(prefix, renderer) 0
 #endif
 
 /*************************************************************************************************
