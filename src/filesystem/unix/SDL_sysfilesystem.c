@@ -25,6 +25,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /* System dependent filesystem routines                                */
 
+#include <string.h> /* For strerror() */
 #include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
